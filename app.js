@@ -158,15 +158,29 @@ function handleCallbackQuery(action, opts, msg) {
             } else {
                 cookiePromise = SettingDB.getSetting('bloodcat_cookie', -1)
             }
-            return cookiePromise.then((cookies) => {
-                return {
-                    url: `${OsuApi.url}s/${args[1]}`,
-                    headers: {
-                        cookie: process.env.LOCAL === 'true' ? Config.bloodcat.cookie : cookies
-                    },
-                    encoding: null,
-                    resolveWithFullResponse: true
+            return bot.editMessageReplyMarkup({
+                reply_markup: {
+                    inline_keyboard: [[{
+                        text: '🔎 Detail',
+                        url: `${OsuApi.osu_url}s/${args[1]}`
+                    }]]
                 }
+            }, {
+                chat_id: opts.chat_id,
+                message_id: opts.msg_id
+            }).then(() => {
+                return bot.answerCallbackQuery(opts.callback_id, 'downloading', false).then(() => {
+                    return cookiePromise.then((cookies) => {
+                        return {
+                            url: `${OsuApi.url}s/${args[1]}`,
+                            headers: {
+                                cookie: process.env.LOCAL === 'true' ? Config.bloodcat.cookie : cookies
+                            },
+                            encoding: null,
+                            resolveWithFullResponse: true
+                        }
+                    })
+                })
             }).then((options) => {
                 return request(options).then((res) => {
                     let filename = regexp.exec(res.headers['content-disposition'])[1] || `${args[1]}.osz`;
