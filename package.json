@@ -1,0 +1,22 @@
+{
+  "name": "OsuDroidBot",
+  "version": "0.0.1",
+  "description": "a telegram bot for osudroid",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "keywords": [
+    "node",
+    "heroku",
+    "osudroud",
+    "telegram"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "debug": "^2.6.8",
+    "node-telegram-bot-api": "github:yagop/node-telegram-bot-api#experimental",
+    "request": "^2.81.0",
+    "request-promise-native": "^1.0.4"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "OsuDroidBot on Heroku: Node.js",
+  "description": "a telegram bot for osudroid",
+  "repository": "",
+  "keywords": [
+    "node",
+    "heroku",
+    "osudroud",
+    "telegram"
+  ],
+  "env": {
+    "APP_URL": {
+      "description": "heroku app url",
+      "generator": "secret"
+    },
+    "PORT": {
+      "description": "webhook port",
+      "generator": "5000"
+    },
+    "TELEGRAM_TOKEN": {
+      "description": "telegram bot token",
+      "value": ""
+    },
+    "LOCAL": {
+      "description": "local test",
+      "value": "false"
+    }
+  }
+}
