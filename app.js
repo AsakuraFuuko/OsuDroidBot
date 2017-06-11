@@ -173,7 +173,7 @@ function sendBeatmapOszHandler(args) {
     return bot.editMessageReplyMarkup({
         inline_keyboard: [[{
             text: '🔎 Detail',
-            url: `${OsuApi.osu_url}s/set_id`
+            url: `${OsuApi.osu_url}s/${set_id}`
         }]]
     }, {
         chat_id: chat_id,
