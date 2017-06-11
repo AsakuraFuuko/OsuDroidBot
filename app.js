@@ -117,7 +117,7 @@ bot.onText(/([sb]+)\/(\d+)/, (msg, match) => {
 
 function sendBeatmapInfo(chat_id, set) {
     return bot.sendChatAction(chat_id, 'typing').then(() => {
-        return bot.sendMessage(chat_id, `Title: ${set.titleU ? set.titleU : set.title} <a href="${set.thumb}">[P]</a>\nArtist: ${set.artistU ? set.artistU : set.artist}\nCreator: <a href="${set.creatorUrl}">${set.creator}</a>\nStatus: ${set.status}\nModes: ${set.modes}`, {
+        return bot.sendMessage(chat_id, `Title: ${set.titleU ? set.title + ' (' + set.titleU + ')' : set.title} <a href="${set.thumb}">[P]</a>\nArtist: ${set.artistU ? set.artist + ' (' + set.artistU + ')' : set.artist}\nCreator: <a href="${set.creatorUrl}">${set.creator}</a>\nStatus: ${set.status}\nModes: ${set.modes}`, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [[{
@@ -260,6 +260,48 @@ bot.onText(/\/setBloodCatCookie(@\w+)?/, (msg, match) => {
             }
             return bot.sendMessage(chat_id, '设置成功~')
         });
+    })
+});
+
+bot.on('inline_query', (msg) => {
+    let inline_id = msg.id;
+    let query = msg.query || '';
+    let queryArgs = query.split(' ');
+    debug(queryArgs);
+    let offset = msg.offset ? msg.offset : 1;
+
+    /*
+     in  out
+     1 => 1
+     2 => 1
+     3 => 2
+     4 => 2
+     5 => 3
+     6 => 3
+     */
+    console.log('page', Math.ceil(offset / 2));
+    return OsuApi.search(query, 'o', null, null, Math.ceil(offset / 2)).then((sets) => {
+        if (sets.length > 0) {
+            const results = sets
+                .map((set) => {
+                    return {
+                        id: set.id,
+                        type: 'article',
+                        title: set.titleU ? `${set.title} (${set.titleU})` : set.title,
+                        description: (set.artistU ? `${set.artist} (${set.artistU})` : set.artist) + '\n' + set.creator,
+                        input_message_content: {message_text: `${OsuApi.osu_url}s/${set.id}`},
+                        thumb_url: set.thumb
+                    }
+                }).filter((element, index) => ((offset % 2) === 0 ? index >= 30 : index < 30));
+            return bot.answerInlineQuery(inline_id, results, {
+                next_offset: parseInt(offset) + 1,
+                cache_time: 0
+            })
+        } else {
+            return bot.answerInlineQuery(inline_id, [], {
+                cache_time: 0
+            })
+        }
     })
 });
 
