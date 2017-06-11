@@ -6,6 +6,8 @@ const request = require('request-promise-native');
 const OsuApi = new (require('./lib/osuapi'))();
 
 let isLocal = process.env.LOCAL === 'true';
+console.log('isLocal=', isLocal);
+
 let SettingDB, Config;
 if (!isLocal) {
     Config = require('./config.json');
