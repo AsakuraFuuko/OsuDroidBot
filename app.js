@@ -6,6 +6,12 @@ const request = require('request-promise-native');
 const OsuApi = new (require('./lib/osuapi'))();
 const Config = require('./config.json');
 
+let isLocal = process.env.LOCAL === 'true';
+let SettingDB;
+if (!isLocal) {
+    SettingDB = new (require('./lib/db/settings'))();
+}
+
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const options = {
     webHook: {
@@ -13,7 +19,7 @@ const options = {
     }
 };
 
-if (process.env.LOCAL === 'true') {
+if (isLocal) {
     options.webHook.key = `${__dirname}/private.key`;  // Path to file with PEM private key
     options.webHook.cert = `${__dirname}/cert.pem`  // Path to file with PEM certificate
 }
@@ -22,7 +28,7 @@ let botname = '@bot_name';
 const url = process.env.APP_URL;
 const bot = new TelegramBot(TOKEN, options);
 
-if (process.env.LOCAL === 'true') {
+if (isLocal) {
     bot.setWebHook(`${url}/bot${TOKEN}`, {
         certificate: options.webHook.cert,
     });
@@ -143,21 +149,30 @@ function handleCallbackQuery(action, opts, msg) {
     switch (args[0]) {
         case 'osu': {
             let regexp = /filename="(.*)"/gi;
-            let options = {
-                url: `${OsuApi.url}s/${args[1]}`,
-                headers: {
-                    cookie: Config.bloodcat.cookie
-                },
-                encoding: null,
-                resolveWithFullResponse: true
-            };
-            return request(options).then((res) => {
-                let filename = regexp.exec(res.headers['content-disposition'])[1] || `${args[1]}.osz`;
-                return bot.sendChatAction(opts.chat_id, 'upload_document').then(() => {
-                    return bot.sendDocument(opts.chat_id, res.body, {}, {filename})
+            let cookiePromise;
+            if (isLocal) {
+                cookiePromise = Promise.resolve()
+            } else {
+                cookiePromise = SettingDB.getSetting('bloodcat_cookie', -1)
+            }
+            return cookiePromise.then((cookies) => {
+                return {
+                    url: `${OsuApi.url}s/${args[1]}`,
+                    headers: {
+                        cookie: process.env.LOCAL === 'true' ? Config.bloodcat.cookie : cookies
+                    },
+                    encoding: null,
+                    resolveWithFullResponse: true
+                }
+            }).then((options) => {
+                return request(options).then((res) => {
+                    let filename = regexp.exec(res.headers['content-disposition'])[1] || `${args[1]}.osz`;
+                    return bot.sendChatAction(opts.chat_id, 'upload_document').then(() => {
+                        return bot.sendDocument(opts.chat_id, res.body, {}, {filename})
+                    })
                 })
             }).catch((err) => {
-                if (err.statusCode === 401) {
+                if (err.statusCode && err.statusCode === 401) {
                     console.error(err.error.toString());
                     return bot.answerCallbackQuery(opts.callback_id, 'cookie expired', false)
                 }
@@ -165,3 +180,26 @@ function handleCallbackQuery(action, opts, msg) {
         }
     }
 }
+
+bot.onText(/\/setBloodCatCookie(@\w+)?/, (msg, match) => {
+    let chat_id = msg.chat.id;
+    let bot_name = match[1];
+    if (bot_name && bot_name !== botname) {
+        return;
+    }
+    return bot.sendMessage(chat_id, '请输入bloodcat的cookies', {
+        reply_markup: {
+            force_reply: true
+        }
+    }).then((sended) => {
+        return bot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+            let value = replyMessage.text.trim();
+            if (isLocal) {
+                Config.bloodcat.cookie = value
+            } else {
+                SettingDB.setSetting('bloodcat_cookie', value, -1)
+            }
+            return bot.sendMessage(chat_id, '设置成功~')
+        });
+    })
+});
