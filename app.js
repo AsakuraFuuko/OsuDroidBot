@@ -270,7 +270,7 @@ process.on('unhandledRejection', (reason) => {
 
 require('heroku-self-ping')(url, {interval: 25 * 60 * 1000});
 
-// empty music folder
+// empty osz folder
 del(['./download/osz/*.osz']).then(paths => {
     console.log('Deleted files and folders:\n', paths.join('\n'));
 });
