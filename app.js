@@ -1,7 +1,9 @@
 'use strict';
 const debug = require('debug')('osudroidbot');
 const TelegramBot = require('node-telegram-bot-api');
-const request = require('request-promise-native');
+const request = require('request');
+const fs = require("fs");
+const del = require('del');
 
 const OsuApi = new (require('./lib/osuapi'))();
 
@@ -151,51 +153,91 @@ function handleCallbackQuery(action, opts, msg) {
     let args = action.split('‼︎');
     switch (args[0]) {
         case 'osu': {
-            let regexp = /filename="(.*)"/gi;
-            let cookiePromise;
-            if (isLocal) {
-                cookiePromise = Promise.resolve()
-            } else {
-                cookiePromise = SettingDB.getSetting('bloodcat_cookie', -1)
-            }
-            return bot.editMessageReplyMarkup({
-                reply_markup: {
-                    inline_keyboard: [[{
-                        text: '🔎 Detail',
-                        url: `${OsuApi.osu_url}s/${args[1]}`
-                    }]]
-                }
-            }, {
-                chat_id: opts.chat_id,
-                message_id: opts.msg_id
-            }).then(() => {
-                return bot.answerCallbackQuery(opts.callback_id, 'downloading', false).then(() => {
-                    return cookiePromise.then((cookies) => {
-                        return {
-                            url: `${OsuApi.url}s/${args[1]}`,
-                            headers: {
-                                cookie: process.env.LOCAL === 'true' ? Config.bloodcat.cookie : cookies
-                            },
-                            encoding: null,
-                            resolveWithFullResponse: true
-                        }
-                    })
-                })
-            }).then((options) => {
-                return request(options).then((res) => {
-                    let filename = regexp.exec(res.headers['content-disposition'])[1] || `${args[1]}.osz`;
-                    return bot.sendChatAction(opts.chat_id, 'upload_document').then(() => {
-                        return bot.sendDocument(opts.chat_id, res.body, {}, {filename})
-                    })
-                })
-            }).catch((err) => {
-                if (err.statusCode && err.statusCode === 401) {
-                    console.error(err.error.toString());
-                    return bot.answerCallbackQuery(opts.callback_id, 'cookie expired', false)
-                }
-            })
+            let set_id = parseInt(args[1]);
+            opts = Object.assign(opts, {set_id, trash: true});
+            return sendBeatmapOszHandler(opts);
         }
     }
+}
+
+function sendBeatmapOszHandler(args) {
+    debug(args);
+    let {callback_id, chat_id, msg_id, set_id} = args;
+    let regexp = /filename="(.*)"/gi;
+    let cookiePromise;
+    if (isLocal) {
+        cookiePromise = Promise.resolve()
+    } else {
+        cookiePromise = SettingDB.getSetting('bloodcat_cookie', -1)
+    }
+    return bot.editMessageReplyMarkup({
+        inline_keyboard: [[{
+            text: '🔎 Detail',
+            url: `${OsuApi.osu_url}s/set_id`
+        }]]
+    }, {
+        chat_id: chat_id,
+        message_id: msg_id
+    }).then(() => {
+        return bot.answerCallbackQuery(callback_id, 'downloading...', false).then(() => {
+            return cookiePromise.then((cookies) => {
+                return {
+                    url: `${OsuApi.url}s/${set_id}`,
+                    headers: {
+                        cookie: process.env.LOCAL === 'true' ? Config.bloodcat.cookie : cookies
+                    },
+                    encoding: null,
+                    resolveWithFullResponse: true
+                }
+            })
+        })
+    }).then((options) => {
+        return new Promise((resolve, reject) => {
+            let filename, stream;
+            request.get(options).on('error', (err) => {
+                reject(err)
+            }).on('response', (res) => {
+                if (res.statusCode === 200) {
+                    filename = regexp.exec(res.headers['content-disposition'])[1] || `${args[1]}.osz`;
+                    console.log(`downloading ${filename}`);
+                    stream = fs.createWriteStream(`./download/osz/${filename}`);
+                    stream.on('finish', () => {
+                        console.log(`${filename} downloaded`);
+                        resolve({
+                            data: fs.createReadStream(`./download/osz/${filename}`),
+                            name: filename
+                        })
+                    });
+                    res.pipe(stream)
+                } else {
+                    return reject(res)
+                }
+            })
+        })
+    }).then((data) => {
+        let filename = `./download/osz/${data.name}`;
+        console.log(`sending ${filename}`);
+        return bot.sendChatAction(chat_id, 'upload_document').then(() => {
+            return bot.sendDocument(chat_id, data.data, {}, {
+                filename: data.name
+            }).then(() => {
+                console.log(`${filename} send`);
+                fs.unlink(filename, (err) => {
+                    data = null;
+                    if (err) {
+                        console.error(err)
+                    } else {
+                        console.log(`Delete file ${filename}`)
+                    }
+                });
+            })
+        })
+    }).catch((err) => {
+        if (err.statusCode && err.statusCode === 401) {
+            console.error(err.error.toString());
+            return bot.answerCallbackQuery(callback_id, 'cookie expired', false)
+        }
+    })
 }
 
 bot.onText(/\/setBloodCatCookie(@\w+)?/, (msg, match) => {
@@ -219,4 +261,16 @@ bot.onText(/\/setBloodCatCookie(@\w+)?/, (msg, match) => {
             return bot.sendMessage(chat_id, '设置成功~')
         });
     })
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error(reason);
+    //   process.exit(1);
+});
+
+require('heroku-self-ping')(url, {interval: 25 * 60 * 1000});
+
+// empty music folder
+del(['./download/osz/*.osz']).then(paths => {
+    console.log('Deleted files and folders:\n', paths.join('\n'));
 });
