@@ -4,11 +4,11 @@ const TelegramBot = require('node-telegram-bot-api');
 const request = require('request-promise-native');
 
 const OsuApi = new (require('./lib/osuapi'))();
-const Config = require('./config.json');
 
 let isLocal = process.env.LOCAL === 'true';
-let SettingDB;
+let SettingDB, Config;
 if (!isLocal) {
+    Config = require('./config.json');
     SettingDB = new (require('./lib/db/settings'))();
 }
 
