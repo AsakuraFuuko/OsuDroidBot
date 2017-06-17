@@ -234,8 +234,8 @@ function sendBeatmapOszHandler(args) {
         })
     }).catch((err) => {
         if (err.statusCode && err.statusCode === 401) {
-            console.error(err);
-            return bot.answerCallbackQuery(callback_id, 'cookie expired', false)
+            console.error(err.statusMessage);
+            return bot.sendMessage(chat_id, 'bloodcat cookie expired\nclick /setcookies to update')
         }
     })
 }
