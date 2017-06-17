@@ -234,7 +234,7 @@ function sendBeatmapOszHandler(args) {
         })
     }).catch((err) => {
         if (err.statusCode && err.statusCode === 401) {
-            console.error(err.error);
+            console.error(err);
             return bot.answerCallbackQuery(callback_id, 'cookie expired', false)
         }
     })
