@@ -234,13 +234,13 @@ function sendBeatmapOszHandler(args) {
         })
     }).catch((err) => {
         if (err.statusCode && err.statusCode === 401) {
-            console.error(err.error.toString());
+            console.error(err.error);
             return bot.answerCallbackQuery(callback_id, 'cookie expired', false)
         }
     })
 }
 
-bot.onText(/\/setBloodCatCookie(@\w+)?/, (msg, match) => {
+bot.onText(/\/setcookie(@\w+)?/, (msg, match) => {
     let chat_id = msg.chat.id;
     let bot_name = match[1];
     if (bot_name && bot_name !== botname) {
