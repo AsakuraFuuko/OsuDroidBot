@@ -19,7 +19,6 @@
     "heroku-self-ping": "^1.1.3",
     "node-telegram-bot-api": "github:yagop/node-telegram-bot-api#experimental",
     "pg": "^6.2.4",
-    "pg-pool": "^1.7.1",
     "request": "^2.81.0"
   }
 }
