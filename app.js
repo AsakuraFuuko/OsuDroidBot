@@ -310,7 +310,7 @@ process.on('unhandledRejection', (reason) => {
     //   process.exit(1);
 });
 
-require('heroku-self-ping')(url, {interval: 25 * 60 * 1000});
+// require('heroku-self-ping')(url, {interval: 25 * 60 * 1000});
 
 // empty osz folder
 del(['./download/osz/*.osz']).then(paths => {
