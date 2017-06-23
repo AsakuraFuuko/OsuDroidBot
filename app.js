@@ -14,7 +14,7 @@ let SettingDB, Config;
 if (isLocal) {
     Config = require('./config.json');
 } else {
-    SettingDB = new (require('./lib/db/settings'))();
+    SettingDB = new (require('./lib/db/mongo/settings'))();
 }
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
