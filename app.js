@@ -210,7 +210,7 @@ function handleCallbackQuery(action, opts, msg) {
     switch (args[0]) {
         case 'osu': {
             let set_id = parseInt(args[1]);
-            opts = Object.assign(opts, {set_id, trash: true});
+            opts = Object.assign(opts, {set_id, trash: true, is_first: true});
             return sendBeatmapOszHandler(opts);
         }
     }
@@ -218,8 +218,19 @@ function handleCallbackQuery(action, opts, msg) {
 
 async function sendBeatmapOszHandler(args) {
     debug(args);
-    let {callback_id, chat_id, msg_id, set_id, sync, hash, response} = args;
+    let {callback_id, chat_id, msg_id, set_id, sync, hash, response, is_first} = args;
     let regexp = /filename="(.*)"/gi;
+    if (is_first) {
+        await bot.editMessageReplyMarkup({
+            inline_keyboard: [[{
+                text: '🔎 Detail',
+                url: `${OsuApi.osu_url}s/${set_id}`
+            }]]
+        }, {
+            chat_id: chat_id,
+            message_id: msg_id
+        })
+    }
     return SettingDB.getSetting('bloodcat_cookie', -1).then((cookies) => {
         let options = {
             url: `${OsuApi.url}s/${set_id}`,
@@ -287,15 +298,6 @@ async function sendBeatmapOszHandler(args) {
                         console.error(err)
                     } else {
                         console.log(`Delete file ${filename}`);
-                        return bot.editMessageReplyMarkup({
-                            inline_keyboard: [[{
-                                text: '🔎 Detail',
-                                url: `${OsuApi.osu_url}s/${set_id}`
-                            }]]
-                        }, {
-                            chat_id: chat_id,
-                            message_id: msg_id
-                        })
                     }
                 });
             })
@@ -311,7 +313,13 @@ async function sendBeatmapOszHandler(args) {
             let sended = await bot.sendMessage(chat_id, 'Enter the verification code');
             return bot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
                 let value = replyMessage.text.trim();
-                return sendBeatmapOszHandler(Object.assign(args, {sync, hash, response: value, callback_id: null}))
+                return sendBeatmapOszHandler(Object.assign(args, {
+                    sync,
+                    hash,
+                    response: value,
+                    callback_id: null,
+                    is_first: false
+                }))
             });
         } else {
             return bot.sendMessage(chat_id, 'download failed, please retry')
