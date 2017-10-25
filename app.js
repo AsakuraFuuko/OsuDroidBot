@@ -57,7 +57,7 @@ let _ = bot.setWebHook(`${URL}/bot${TOKEN}`);
 bot.getMe().then((msg) => {
     botname = '@' + msg.username;
 
-    bot.onText(/\/id(@\w+)?(?: )?(\d+)/, (msg, match) => {
+    bot.onText(/\/id(@\w+)?(?: )?(?:https?:\/\/osu\.ppy\.sh\/[s|b]\/)?(\d+)/, (msg, match) => {
         let chat_id = msg.chat.id;
         let bot_name = match[1];
         if (bot_name && bot_name !== botname) {
